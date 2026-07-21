@@ -1,0 +1,1657 @@
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [vector]
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum SystemRole {
+  FOUNDER
+  ADMINISTRATOR
+  CREATIVE_HEAD
+  DESIGNER
+  DEVELOPER
+  INTERN
+  GUEST
+}
+
+enum UserStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum MemberStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+  REMOVED
+}
+
+enum OrgStatus {
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum WorkspaceStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum ProjectStatus {
+  DRAFT
+  ACTIVE
+  ON_HOLD
+  IN_REVIEW
+  COMPLETED
+  ARCHIVED
+  CANCELLED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  BLOCKED
+  DONE
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+  CRITICAL
+}
+
+enum ClientStatus {
+  PROSPECT
+  ACTIVE
+  PAUSED
+  CHURNED
+  ARCHIVED
+}
+
+enum MeetingStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  POSTPONED
+}
+
+enum DocumentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum FileStatus {
+  UPLOADING
+  ACTIVE
+  ARCHIVED
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+  MENTION
+  ASSIGNMENT
+  REMINDER
+  SYSTEM
+}
+
+enum ActivityType {
+  CREATED
+  UPDATED
+  DELETED
+  RESTORED
+  ASSIGNED
+  UNASSIGNED
+  STATUS_CHANGED
+  COMMENT_ADDED
+  FILE_UPLOADED
+  MEMBER_INVITED
+  MEMBER_REMOVED
+  ROLE_CHANGED
+  PERMISSION_CHANGED
+  LOGIN
+  LOGOUT
+  AI_ACTION
+  AUTOMATION_RUN
+  INTEGRATION_SYNC
+}
+
+enum AuditAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  RESTORE
+  LOGIN
+  LOGOUT
+  ROLE_CHANGE
+  PERMISSION_CHANGE
+  SETTINGS_CHANGE
+  AI_EXECUTION
+  AUTOMATION_EXECUTION
+  INTEGRATION_SYNC
+  API_KEY_CREATED
+  API_KEY_REVOKED
+  EXPORT
+  IMPORT
+}
+
+enum IntegrationProvider {
+  GITHUB
+  FIGMA
+  GOOGLE
+  META
+  SLACK
+  DISCORD
+  WHATSAPP
+  RAZORPAY
+  STRIPE
+  CLOUDFLARE
+  VERCEL
+  RENDER
+  FIREBASE
+  OPENAI
+  CLAUDE
+  GEMINI
+  CUSTOM
+}
+
+enum IntegrationStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+  PENDING
+}
+
+enum SettingScope {
+  ORGANIZATION
+  WORKSPACE
+  USER
+  AI
+  NOTIFICATION
+  BRAND
+  INTEGRATION
+  SECURITY
+  BILLING
+  FEATURE
+}
+
+enum ToolCategory {
+  DATA
+  COMMUNICATION
+  ANALYSIS
+  AUTOMATION
+  SYSTEM
+  INTEGRATION
+  UTILITY
+}
+
+enum MemoryEntryStatus {
+  ACTIVE
+  ARCHIVED
+  DELETED
+}
+
+enum PermissionScope {
+  ORGANIZATION
+  WORKSPACE
+  DEPARTMENT
+  TEAM
+  RESOURCE
+}
+
+enum AgentStatus {
+  ACTIVE
+  INACTIVE
+  DEPRECATED
+}
+
+enum ConversationStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+  TOOL
+}
+
+enum MemoryType {
+  FACT
+  PREFERENCE
+  CONTEXT
+  DECISION
+  INTERACTION
+  INSIGHT
+}
+
+enum MemorySourceType {
+  MANUAL
+  PROJECT
+  CLIENT
+  CONVERSATION
+  AGENT
+  SYSTEM
+  DOCUMENT
+  MEETING
+}
+
+enum AutomationStatus {
+  ACTIVE
+  PAUSED
+  DISABLED
+  ERROR
+}
+
+enum AutomationTrigger {
+  SCHEDULE
+  EVENT
+  WEBHOOK
+  MANUAL
+  CONDITION
+}
+
+enum WorkflowStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum WorkflowExecutionStatus {
+  PENDING
+  RUNNING
+  WAITING_CONFIRMATION
+  COMPLETED
+  FAILED
+  CANCELLED
+  TIMED_OUT
+}
+
+// ============================================================================
+// ORGANIZATION & WORKSPACE
+// ============================================================================
+
+model Organization {
+  id          String    @id @default(uuid())
+  name        String
+  slug        String    @unique
+  logo        String?
+  domain      String?   @unique
+  description String?
+  metadata    Json?
+  status      OrgStatus @default(ACTIVE)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+  deletedBy String?
+
+  workspaces    Workspace[]
+  members       Member[]
+  roles         Role[]
+  departments   Department[]
+  tags          Tag[]
+  integrations  Integration[]
+  apiKeys       APIKey[]
+  settings      Setting[]
+  auditLogs     AuditLog[]
+  activities    Activity[]
+  aiAgents      AIAgent[]
+  promptTemplates PromptTemplate[]
+  automations   Automation[]
+  workflows     Workflow[]
+
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model Workspace {
+  id             String          @id @default(uuid())
+  organizationId String
+  name           String
+  slug           String
+  description    String?
+  icon           String?
+  metadata       Json?
+  status         WorkspaceStatus @default(ACTIVE)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+  deletedBy String?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  members      Member[]     @relation("WorkspaceMembers")
+  projects     Project[]
+  clients      Client[]
+  meetings     Meeting[]
+  labels       Label[]
+  knowledge    Knowledge[]
+  knowledgeCategories KnowledgeCategory[]
+  documents    Document[]
+  conversations Conversation[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId, status])
+  @@index([deletedAt])
+}
+
+// ============================================================================
+// IDENTITY & ACCESS
+// ============================================================================
+
+model User {
+  id           String     @id @default(uuid())
+  email        String     @unique
+  passwordHash String?
+  name         String
+  avatarUrl    String?
+  phone        String?
+  timezone     String     @default("Asia/Kolkata")
+  locale       String     @default("en")
+  status       UserStatus @default(INVITED)
+  lastLoginAt  DateTime?
+  lastActiveAt DateTime?
+  emailVerifiedAt DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+  deletedBy String?
+
+  memberships   Member[]
+  notifications Notification[]
+  settings      Setting[]       @relation("UserSettings")
+
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model Member {
+  id             String       @id @default(uuid())
+  userId         String
+  organizationId String
+  roleId         String
+  departmentId   String?
+  title          String?
+  bio            String?
+  status         MemberStatus @default(INVITED)
+  joinedAt       DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+  deletedBy String?
+
+  user         User         @relation(fields: [userId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+  role         Role         @relation(fields: [roleId], references: [id])
+  department   Department?  @relation(fields: [departmentId], references: [id])
+
+  workspaces       Workspace[]        @relation("WorkspaceMembers")
+  teamMemberships  TeamMember[]
+  projectMembers   ProjectMember[]
+  taskAssignments  TaskAssignment[]
+  comments         Comment[]
+  files            File[]             @relation("UploadedFiles")
+  conversations    Conversation[]
+  aiMemories       AIMemory[]         @relation("MemoryCreator")
+
+  @@unique([userId, organizationId])
+  @@index([organizationId, status])
+  @@index([roleId])
+  @@index([departmentId])
+  @@index([deletedAt])
+}
+
+model Role {
+  id             String     @id @default(uuid())
+  organizationId String
+  name           String
+  slug           String
+  description    String?
+  systemRole     SystemRole?
+  isFounder      Boolean    @default(false)
+  isDefault      Boolean    @default(false)
+  level          Int        @default(0)
+  metadata       Json?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?
+  updatedBy String?
+
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  members         Member[]
+  rolePermissions RolePermission[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId, systemRole])
+}
+
+model Permission {
+  id          String  @id @default(uuid())
+  key         String  @unique
+  resource    String
+  action      String
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  updatedBy String?
+
+  rolePermissions RolePermission[]
+
+  @@unique([resource, action])
+  @@index([resource])
+}
+
+model RolePermission {
+  id           String          @id @default(uuid())
+  roleId       String
+  permissionId String
+  scope        PermissionScope @default(ORGANIZATION)
+  scopeId      String?
+  conditions   Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  updatedBy String?
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId, scope, scopeId])
+  @@index([roleId])
+  @@index([permissionId])
+}
+
+// ============================================================================
+// TEAMS & DEPARTMENTS
+// ============================================================================
+
+model Department {
+  id             String  @id @default(uuid())
+  organizationId String
+  name           String
+  slug           String
+  description    String?
+  headId         String?
+  parentId       String?
+  metadata       Json?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+  deletedBy String?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  parent       Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children     Department[] @relation("DepartmentHierarchy")
+  members      Member[]
+  teams        Team[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+  @@index([parentId])
+  @@index([deletedAt])
+}
+
+model Team {
+  id           String  @id @default(uuid())
+  departmentId String
+  name         String
+  slug         String
+  description  String?
+  leadId       String?
+  metadata     Json?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+  deletedBy String?
+
+  department  Department   @relation(fields: [departmentId], references: [id])
+  teamMembers TeamMember[]
+
+  @@unique([departmentId, slug])
+  @@index([departmentId])
+  @@index([deletedAt])
+}
+
+model TeamMember {
+  id       String  @id @default(uuid())
+  teamId   String
+  memberId String
+  isLead   Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  updatedBy String?
+
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, memberId])
+  @@index([memberId])
+}
+
+// ============================================================================
+// PROJECTS & TASKS
+// ============================================================================
+
+model Project {
+  id          String        @id @default(uuid())
+  workspaceId String
+  clientId    String?
+  title       String
+  slug        String
+  description String?
+  status      ProjectStatus @default(DRAFT)
+  priority    Priority      @default(MEDIUM)
+  startDate   DateTime?
+  dueDate     DateTime?
+  completedAt DateTime?
+  budget      Decimal?      @db.Decimal(12, 2)
+  currency    String        @default("INR")
+  metadata    Json?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+  deletedBy String?
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  client    Client?   @relation(fields: [clientId], references: [id])
+
+  projectMembers ProjectMember[]
+  tasks          Task[]
+  documents      Document[]
+  files          File[]
+  comments       Comment[]
+  meetings       Meeting[]       @relation("ProjectMeetings")
+  tags           Tag[]           @relation("ProjectTags")
+  labels         Label[]         @relation("ProjectLabels")
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId, status])
+  @@index([clientId])
+  @@index([priority])
+  @@index([dueDate])
+  @@index([deletedAt])
+}
+
+model ProjectMember {
+  id        String  @id @default(uuid())
+  projectId String
+  memberId  String
+  role      String  @default("member")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  updatedBy String?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  member  Member  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, memberId])
+  @@index([memberId])
+}
+
+model Task {
+  id          String     @id @default(uuid())
+  projectId   String
+  parentId    String?
+  title       String
+  description String?
+  status      TaskStatus @default(TODO)
+  priority    Priority   @default(MEDIUM)
+  dueDate     DateTime?
+  startDate   DateTime?
+  completedAt DateTime?
+  estimatedHours Float?
+  actualHours    Float?
+  position    Int        @default(0)
+  metadata    Json?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+  deletedBy String?
+
+  project     Project          @relation(fields: [projectId], references: [id])
+  parent      Task?            @relation("TaskHierarchy", fields: [parentId], references: [id])
+  subtasks    Task[]           @relation("TaskHierarchy")
+  assignments TaskAssignment[]
+  comments    Comment[]
+  files       File[]
+  tags        Tag[]            @relation("TaskTags")
+  labels      Label[]          @relation("TaskLabels")
+
+  @@index([projectId, status])
+  @@index([parentId])
+  @@index([priority])
+  @@index([dueDate])
+  @@index([position])
+  @@index([deletedAt])
+}
+
+model TaskAssignment {
+  id       String @id @default(uuid())
+  taskId   String
+  memberId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  updatedBy String?
+
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, memberId])
+  @@index([memberId])
+}
+
+// ============================================================================
+// CLIENTS & MEETINGS
+// ============================================================================
+
+model Client {
+  id           String       @id @default(uuid())
+  workspaceId  String
+  name         String
+  slug         String
+  industry     String?
+  website      String?
+  contactName  String?
+  contactEmail String?
+  contactPhone String?
+  address      String?
+  notes        String?
+  status       ClientStatus @default(PROSPECT)
+  metadata     Json?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+  deletedBy String?
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  projects  Project[]
+  meetings  Meeting[] @relation("ClientMeetings")
+  tags      Tag[]     @relation("ClientTags")
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId, status])
+  @@index([deletedAt])
+}
+
+model Meeting {
+  id          String        @id @default(uuid())
+  workspaceId String
+  projectId   String?
+  clientId    String?
+  title       String
+  description String?
+  status      MeetingStatus @default(SCHEDULED)
+  startTime   DateTime
+  endTime     DateTime?
+  location    String?
+  meetingUrl  String?
+  notes       String?
+  summary     String?
+  attendees   Json?
+  metadata    Json?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+  deletedBy String?
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  project   Project?  @relation("ProjectMeetings", fields: [projectId], references: [id])
+  client    Client?   @relation("ClientMeetings", fields: [clientId], references: [id])
+
+  @@index([workspaceId, startTime])
+  @@index([projectId])
+  @@index([clientId])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+// ============================================================================
+// KNOWLEDGE & DOCUMENTS
+// ============================================================================
+
+model KnowledgeCategory {
+  id          String  @id @default(uuid())
+  workspaceId String
+  parentId    String?
+  name        String
+  slug        String
+  description String?
+  icon        String?
+  position    Int     @default(0)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+  deletedBy String?
+
+  workspace Workspace           @relation(fields: [workspaceId], references: [id])
+  parent    KnowledgeCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children  KnowledgeCategory[] @relation("CategoryHierarchy")
+  entries   Knowledge[]
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId])
+  @@index([parentId])
+  @@index([deletedAt])
+}
+
+model Knowledge {
+  id          String  @id @default(uuid())
+  workspaceId String
+  categoryId  String?
+  title       String
+  content     String
+  contentHtml String?
+  summary     String?
+  sourceType  MemorySourceType @default(MANUAL)
+  sourceId    String?
+  metadata    Json?
+
+  embedding   Unsupported("vector(1536)")?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+  deletedBy String?
+
+  workspace Workspace          @relation(fields: [workspaceId], references: [id])
+  category  KnowledgeCategory? @relation(fields: [categoryId], references: [id])
+  tags      Tag[]              @relation("KnowledgeTags")
+
+  @@index([workspaceId, sourceType])
+  @@index([categoryId])
+  @@index([deletedAt])
+}
+
+model Document {
+  id          String         @id @default(uuid())
+  workspaceId String
+  projectId   String?
+  title       String
+  slug        String
+  content     String?
+  contentHtml String?
+  status      DocumentStatus @default(DRAFT)
+  version     Int            @default(1)
+  parentId    String?
+  metadata    Json?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+  deletedBy String?
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  project   Project?  @relation(fields: [projectId], references: [id])
+  parent    Document? @relation("DocumentVersions", fields: [parentId], references: [id])
+  versions  Document[] @relation("DocumentVersions")
+  files     File[]
+  comments  Comment[]
+  tags      Tag[]     @relation("DocumentTags")
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId, status])
+  @@index([projectId])
+  @@index([parentId])
+  @@index([deletedAt])
+}
+
+model File {
+  id         String     @id @default(uuid())
+  memberId   String
+  projectId  String?
+  taskId     String?
+  documentId String?
+  filename   String
+  originalName String
+  mimeType   String
+  size       Int
+  url        String
+  thumbnailUrl String?
+  version    Int        @default(1)
+  parentId   String?
+  status     FileStatus @default(ACTIVE)
+  metadata   Json?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+  deletedBy String?
+
+  uploadedBy Member    @relation("UploadedFiles", fields: [memberId], references: [id])
+  project    Project?  @relation(fields: [projectId], references: [id])
+  task       Task?     @relation(fields: [taskId], references: [id])
+  document   Document? @relation(fields: [documentId], references: [id])
+  parent     File?     @relation("FileVersions", fields: [parentId], references: [id])
+  versions   File[]    @relation("FileVersions")
+
+  @@index([memberId])
+  @@index([projectId])
+  @@index([taskId])
+  @@index([documentId])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+// ============================================================================
+// COMMENTS, TAGS & LABELS
+// ============================================================================
+
+model Comment {
+  id         String  @id @default(uuid())
+  memberId   String
+  projectId  String?
+  taskId     String?
+  documentId String?
+  parentId   String?
+  content    String
+  metadata   Json?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+  deletedBy String?
+
+  member   Member    @relation(fields: [memberId], references: [id])
+  project  Project?  @relation(fields: [projectId], references: [id])
+  task     Task?     @relation(fields: [taskId], references: [id])
+  document Document? @relation(fields: [documentId], references: [id])
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies  Comment[] @relation("CommentReplies")
+
+  @@index([memberId])
+  @@index([projectId])
+  @@index([taskId])
+  @@index([documentId])
+  @@index([parentId])
+  @@index([deletedAt])
+}
+
+model Tag {
+  id             String @id @default(uuid())
+  organizationId String
+  name           String
+  slug           String
+  color          String @default("#6366F1")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  updatedBy String?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  projects     Project[]    @relation("ProjectTags")
+  tasks        Task[]       @relation("TaskTags")
+  clients      Client[]     @relation("ClientTags")
+  knowledge    Knowledge[]  @relation("KnowledgeTags")
+  documents    Document[]   @relation("DocumentTags")
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+}
+
+model Label {
+  id          String @id @default(uuid())
+  workspaceId String
+  name        String
+  slug        String
+  color       String @default("#6366F1")
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  updatedBy String?
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  projects  Project[] @relation("ProjectLabels")
+  tasks     Task[]    @relation("TaskLabels")
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId])
+}
+
+// ============================================================================
+// NOTIFICATIONS & ACTIVITY
+// ============================================================================
+
+model Notification {
+  id         String           @id @default(uuid())
+  userId     String
+  type       NotificationType @default(INFO)
+  title      String
+  body       String?
+  entityType String?
+  entityId   String?
+  actionUrl  String?
+  read       Boolean          @default(false)
+  readAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  updatedBy String?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, read])
+  @@index([userId, createdAt])
+  @@index([entityType, entityId])
+}
+
+model Activity {
+  id             String       @id @default(uuid())
+  organizationId String
+  actorId        String?
+  type           ActivityType
+  entityType     String
+  entityId       String
+  entityName     String?
+  description    String?
+  metadata       Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  updatedBy String?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, createdAt])
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([type])
+}
+
+// ============================================================================
+// AUDIT & SECURITY
+// ============================================================================
+
+model AuditLog {
+  id             String      @id @default(uuid())
+  organizationId String
+  actorId        String?
+  action         AuditAction
+  entityType     String
+  entityId       String?
+  entityName     String?
+  before         Json?
+  after          Json?
+  metadata       Json?
+  ipAddress      String?
+  userAgent      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  updatedBy String?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, entityType, entityId])
+  @@index([actorId, createdAt])
+  @@index([action])
+}
+
+model APIKey {
+  id             String    @id @default(uuid())
+  organizationId String
+  name           String
+  keyHash        String    @unique
+  keyPrefix      String
+  scopes         String[]
+  expiresAt      DateTime?
+  lastUsedAt     DateTime?
+  revokedAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  updatedBy String?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@index([keyPrefix])
+}
+
+// ============================================================================
+// INTEGRATIONS & SETTINGS
+// ============================================================================
+
+model Integration {
+  id             String              @id @default(uuid())
+  organizationId String
+  provider       IntegrationProvider
+  name           String
+  status         IntegrationStatus   @default(PENDING)
+  config         Json?
+  credentials    Json?
+  scopes         String[]
+  webhookUrl     String?
+  webhookSecret  String?
+  lastSyncAt     DateTime?
+  syncError      String?
+  metadata       Json?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+  deletedBy String?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, provider])
+  @@index([organizationId, status])
+  @@index([deletedAt])
+}
+
+model Setting {
+  id             String       @id @default(uuid())
+  scope          SettingScope
+  scopeId        String
+  key            String
+  value          Json
+  description    String?
+  isEncrypted    Boolean      @default(false)
+  userId         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  updatedBy String?
+
+  user         User?         @relation("UserSettings", fields: [userId], references: [id])
+  organization Organization? @relation(fields: [scopeId], references: [id], map: "setting_org_fk")
+
+  @@unique([scope, scopeId, key])
+  @@index([scope, scopeId])
+  @@index([userId])
+}
+
+// ============================================================================
+// AI FOUNDATION
+// ============================================================================
+
+model AIAgent {
+  id             String      @id @default(uuid())
+  organizationId String
+  key            String
+  name           String
+  description    String?
+  systemPrompt   String?
+  model          String      @default("claude-sonnet-4-5")
+  modelTier      String      @default("standard")
+  maxTokens      Int         @default(4096)
+  temperature    Float       @default(0.7)
+  tools          Json?
+  contextSources String[]
+  modules        String[]
+  allowedRoles   String[]
+  permission     String      @default("agents:execute")
+  promptKey      String?
+  capabilities   String[]    @default([])
+  status         AgentStatus @default(ACTIVE)
+  metadata       Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  updatedBy String?
+
+  organization   Organization          @relation(fields: [organizationId], references: [id])
+  conversations  Conversation[]
+  promptTemplates PromptTemplate[]      @relation("AgentPrompts")
+
+  @@unique([organizationId, key])
+  @@index([organizationId, status])
+}
+
+model AIMemory {
+  id             String           @id @default(uuid())
+  organizationId String
+  workspaceId    String?
+  memberId       String?
+  namespace      String           @default("organization")
+  scopeId        String           @default("")
+  title          String           @default("")
+  type           MemoryType       @default(FACT)
+  sourceType     MemorySourceType @default(MANUAL)
+  sourceId       String?
+  content        String
+  summary        String?
+  importance     Float            @default(0.5)
+  tags           String[]
+  categoryId     String?
+  references     Json?
+  version        Int              @default(1)
+  status         MemoryEntryStatus @default(ACTIVE)
+  metadata       Json?
+  expiresAt      DateTime?
+
+  embedding      Unsupported("vector(1536)")?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+  deletedBy String?
+
+  member    Member?            @relation("MemoryCreator", fields: [memberId], references: [id])
+  revisions AIMemoryRevision[]
+
+  @@index([organizationId, type])
+  @@index([organizationId, sourceType])
+  @@index([organizationId, namespace, scopeId])
+  @@index([workspaceId])
+  @@index([memberId])
+  @@index([importance])
+  @@index([expiresAt])
+  @@index([deletedAt])
+  @@index([status])
+}
+
+model AIMemoryRevision {
+  id           String   @id @default(uuid())
+  entryId      String
+  version      Int
+  title        String
+  content      String
+  summary      String?
+  metadata     Json?
+  tags         String[]
+  changedBy    String?
+  changedAt    DateTime @default(now())
+  changeReason String?
+
+  entry AIMemory @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@unique([entryId, version])
+  @@index([entryId])
+}
+
+model AIMemorySnapshot {
+  id             String   @id @default(uuid())
+  namespace      String
+  scopeId        String
+  label          String
+  entryCount     Int
+  entryIds       String[]
+  createdBy      String?
+  createdAt      DateTime @default(now())
+
+  @@index([namespace, scopeId])
+}
+
+model Conversation {
+  id          String             @id @default(uuid())
+  workspaceId String
+  memberId    String
+  agentId     String?
+  title       String?
+  module      String?
+  status      ConversationStatus @default(ACTIVE)
+  metadata    Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  updatedBy String?
+
+  workspace Workspace             @relation(fields: [workspaceId], references: [id])
+  member    Member                @relation(fields: [memberId], references: [id])
+  agent     AIAgent?              @relation(fields: [agentId], references: [id])
+  messages  ConversationMessage[]
+
+  @@index([workspaceId, memberId])
+  @@index([agentId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ConversationMessage {
+  id             String      @id @default(uuid())
+  conversationId String
+  role           MessageRole
+  content        String
+  model          String?
+  tokensIn       Int?
+  tokensOut      Int?
+  latencyMs      Int?
+  toolCalls      Json?
+  toolResults    Json?
+  metadata       Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  updatedBy String?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
+
+model PromptTemplate {
+  id             String  @id @default(uuid())
+  organizationId String?
+  agentId        String?
+  name           String
+  slug           String
+  description    String?
+  content        String
+  variables      Json?
+  category       String?
+  version        Int     @default(1)
+  isActive       Boolean @default(true)
+  metadata       Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  updatedBy String?
+
+  organization Organization?            @relation(fields: [organizationId], references: [id])
+  agent        AIAgent?                 @relation("AgentPrompts", fields: [agentId], references: [id])
+  revisions    PromptTemplateRevision[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId, category])
+  @@index([agentId])
+}
+
+model PromptTemplateRevision {
+  id           String   @id @default(uuid())
+  templateId   String
+  version      Int
+  content      String
+  variables    Json?
+  changedBy    String?
+  changedAt    DateTime @default(now())
+  changeReason String?
+
+  promptTemplate PromptTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, version])
+  @@index([templateId])
+}
+
+// ============================================================================
+// VERIFICATION TOKENS
+// ============================================================================
+
+model VerificationToken {
+  id         String    @id @default(uuid())
+  identifier String
+  token      String    @unique
+  type       String
+  expiresAt  DateTime
+  usedAt     DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@unique([identifier, token])
+  @@index([identifier])
+  @@index([expiresAt])
+}
+
+// ============================================================================
+// AUTOMATION & WORKFLOWS
+// ============================================================================
+
+model Automation {
+  id             String            @id @default(uuid())
+  organizationId String
+  name           String
+  slug           String
+  description    String?
+  trigger        AutomationTrigger
+  triggerConfig  Json?
+  actions        Json
+  conditions     Json?
+  status         AutomationStatus  @default(ACTIVE)
+  lastRunAt      DateTime?
+  runCount       Int               @default(0)
+  errorCount     Int               @default(0)
+  metadata       Json?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+  deletedBy String?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, slug])
+  @@index([organizationId, status])
+  @@index([trigger])
+  @@index([deletedAt])
+}
+
+model Workflow {
+  id             String         @id @default(uuid())
+  organizationId String
+  name           String
+  slug           String
+  description    String?
+  definition     Json
+  status         WorkflowStatus @default(DRAFT)
+  version        Int            @default(1)
+  metadata       Json?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+  deletedBy String?
+
+  organization Organization        @relation(fields: [organizationId], references: [id])
+  executions   WorkflowExecution[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId, status])
+  @@index([deletedAt])
+}
+
+model WorkflowExecution {
+  id         String                  @id @default(uuid())
+  workflowId String
+  status     WorkflowExecutionStatus @default(PENDING)
+  input      Json?
+  output     Json?
+  error      String?
+  startedAt  DateTime?
+  completedAt DateTime?
+  durationMs Int?
+  metadata   Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  updatedBy String?
+
+  workflow Workflow @relation(fields: [workflowId], references: [id])
+
+  @@index([workflowId, status])
+  @@index([workflowId, createdAt])
+  @@index([status])
+}
+
+// ============================================================================
+// TOOL ENGINE
+// ============================================================================
+
+model AITool {
+  id             String       @id @default(uuid())
+  organizationId String?
+  name           String
+  description    String
+  category       ToolCategory
+  parameters     Json?
+  permission     String
+  metadata       Json?
+  version        String       @default("1.0.0")
+  isActive       Boolean      @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  updatedBy String?
+
+  @@unique([organizationId, name])
+  @@index([organizationId, category])
+}
+
+// ============================================================================
+// SKILL REGISTRY
+// ============================================================================
+
+enum SkillCategory {
+  DEVELOPMENT
+  BROWSER
+  DESKTOP
+  BUSINESS
+  INTELLIGENCE
+  MCP
+}
+
+/// Metadata-only, mirroring `AITool` exactly (DEC-027 point 3's precedent): a skill's plan-building
+/// function is a JS closure and cannot be serialized, so only its descriptive metadata is
+/// persisted here for cross-restart admin visibility and `isActive` overrides. The real
+/// `SkillDefinition` (including `buildPlan`) is always registered from code first.
+model Skill {
+  id                 String        @id @default(uuid())
+  organizationId     String?
+  key                String
+  name               String
+  description        String
+  category           SkillCategory
+  requiredTools      Json
+  requiredPermission String
+  inputs             Json
+  outputs            String
+  verificationMethod String
+  version            String        @default("1.0.0")
+  isActive           Boolean       @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  updatedBy String?
+
+  @@unique([organizationId, key])
+  @@index([organizationId, category])
+}
+
+// ============================================================================
+// TASK SESSIONS
+// ============================================================================
+
+enum TaskSessionStatus {
+  RUNNING
+  PAUSED
+  BLOCKED
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+/// A long-running autonomous goal that may span multiple Goal Execution rounds (each a real
+/// `WorkflowExecution`, see `Workflow`/`WorkflowExecution` above). The session itself owns no
+/// execution logic — it's a persisted wrapper tracking which `WorkflowExecution`s it has spawned
+/// toward one objective, real artifacts those executions produced, and enough identity
+/// (organizationId/workspaceId/createdBy) to rebuild a fresh `WorkflowContext` and resume after a
+/// server restart (see `WorkflowExecutor.resume()`'s rehydration path).
+model TaskSession {
+  id             String            @id @default(uuid())
+  organizationId String
+  workspaceId    String?
+  createdBy      String
+  objective      String
+  status         TaskSessionStatus @default(RUNNING)
+
+  /// The `WorkflowExecution.id` currently in flight or last paused/finished — null only before
+  /// the first round has run.
+  currentWorkflowExecutionId String?
+  /// Every `WorkflowExecution.id` this session has spawned, in order — a session can span more
+  /// than one round when explicitly continued (Command Center "Continue my website").
+  workflowExecutionIds Json
+  /// The skill keys the most recent round composed — denormalized for the Task Sessions page so
+  /// it doesn't need to re-fetch and re-parse the underlying workflow on every list render.
+  skillKeys  Json
+  artifacts  Json    @default("[]")
+  /// The session's real Working Context (top-ranked `ContextItem[]` from the most recent round's
+  /// collection pass, see `src/lib/context-engine/`) — re-collected on every `startTaskSession`/
+  /// `continueTaskSession` round, so newly produced artifacts and newly completed rounds
+  /// automatically feed back into what the NEXT round sees as relevant.
+  workingContext Json    @default("[]")
+  retryCount     Int     @default(0)
+  lastError      String?
+
+  startedAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
+  @@index([organizationId, status])
+  @@index([organizationId, createdBy])
+}
+
+// ============================================================================
+// MCP CLIENT LAYER
+// ============================================================================
+
+enum MCPTransportType {
+  STDIO
+  SSE
+  HTTP
+}
+
+enum MCPServerStatus {
+  DISCONNECTED
+  CONNECTING
+  CONNECTED
+  ERROR
+}
+
+/// A Founder-configured external MCP server — Knottix as an MCP *client*, never a server config
+/// the end user can inject arbitrary values into at request time (same trust boundary as the
+/// Desktop Runtime's allowlisted dev tools: configured once, by someone with `integrations:manage`,
+/// not driven by free-text goal input). `authToken` reuses the exact same AES-256-GCM envelope
+/// `src/lib/crypto/encryption.ts` already established for GitHub credentials (DEC-034).
+model MCPServer {
+  id             String           @id @default(uuid())
+  organizationId String
+  name           String
+  transport      MCPTransportType
+  /// stdio only — the executable to spawn.
+  command String?
+  /// stdio only — arguments to the spawned process.
+  args Json?
+  /// sse/http only — the server's endpoint URL.
+  url String?
+  /// Encrypted `{ciphertext, iv, authTag}` envelope, present only when the server requires auth.
+  authToken Json?
+  isActive  Boolean @default(true)
+
+  status              MCPServerStatus @default(DISCONNECTED)
+  serverVersion       String?
+  lastConnectedAt     DateTime?
+  lastError           String?
+  consecutiveFailures Int             @default(0)
+  latencyMs           Int?
+  toolCount           Int             @default(0)
+  resourceCount       Int             @default(0)
+  promptCount         Int             @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
+  callLogs MCPCallLog[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId, isActive])
+}
+
+enum MCPCallType {
+  TOOL
+  RESOURCE
+  PROMPT
+}
+
+/// Every MCP request Knottix makes, real — "log every MCP request" and "prompt usage must be
+/// logged" from the same one mechanism, backing the MCP page's "Recent Calls"/"Failures" and the
+/// Command Center's "why did you choose this MCP tool" explanation.
+model MCPCallLog {
+  id          String      @id @default(uuid())
+  serverId    String
+  server      MCPServer   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  type        MCPCallType
+  name        String
+  success     Boolean
+  durationMs  Int
+  error       String?
+  requestedBy String?
+
+  createdAt DateTime @default(now())
+
+  @@index([serverId, createdAt])
+}

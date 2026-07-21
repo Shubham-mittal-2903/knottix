@@ -1,0 +1,11 @@
+node_modules
+.next
+out
+build
+dist
+coverage
+prisma/migrations
+public
+*.min.*
+package-lock.json
+.knottix
