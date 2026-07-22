@@ -1,7 +1,7 @@
 import { mkdir } from 'fs/promises';
 import { homedir } from 'os';
 import { join } from 'path';
-import { chromium, type BrowserContext, type Page } from 'playwright';
+import type { BrowserContext, Page } from 'playwright';
 import { logger } from '@/lib/logger';
 
 /**
@@ -17,6 +17,12 @@ let contextPromise: Promise<BrowserContext> | null = null;
 const openPages = new Map<string, Page>();
 
 async function launchContext(): Promise<BrowserContext> {
+  // Dynamic, not static — Playwright's browser binaries are never bundled into a serverless
+  // function (Netlify/Vercel), and a static top-level import pulls `playwright-core` into every
+  // route that transitively imports the Desktop Runtime, crashing pages that never touch a
+  // browser. Desktop Runtime only ever runs meaningfully on a real desktop process anyway; this
+  // import only needs to resolve when a browser tool is actually invoked.
+  const { chromium } = await import('playwright');
   await mkdir(PROFILE_DIR, { recursive: true });
   const context = await chromium.launchPersistentContext(PROFILE_DIR, {
     channel: 'chrome',
