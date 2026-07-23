@@ -1,12 +1,20 @@
 import type { NextAuthConfig } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
+import Google from 'next-auth/providers/google';
 import { verifyPassword } from './password';
 import { findUserByEmail, resolveMemberSession, updateLastLogin } from '@/lib/db/queries/auth';
 import { authConfig } from './auth.config';
 
+/** Google only ever authenticates against an EXISTING, already-seeded Knottix `User` row (matched
+ *  by email) — it never auto-provisions an account for an arbitrary Google sign-in. Knottix has no
+ *  self-serve signup; every real member is created deliberately (via db:seed / an invite flow), so
+ *  Google is just an alternate credential for people already on the team, not a new front door. */
 export const fullAuthConfig = {
   ...authConfig,
   providers: [
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+      ? [Google({ clientId: process.env.GOOGLE_CLIENT_ID, clientSecret: process.env.GOOGLE_CLIENT_SECRET })]
+      : []),
     Credentials({
       credentials: {
         email: { type: 'email' },
@@ -39,6 +47,22 @@ export const fullAuthConfig = {
   ],
   callbacks: {
     ...authConfig.callbacks,
+    /** Gates Google sign-in to emails that already have a real, active Knottix `User` row —
+     *  denies everyone else outright rather than silently creating an account. Mutates `user.id`
+     *  to our internal id (Google's own `sub` isn't a Knottix id) so the `jwt` callback below can
+     *  treat both providers identically. */
+    async signIn({ user, account }) {
+      if (account?.provider !== 'google') return true;
+      const email = user.email;
+      if (!email) return false;
+
+      const existing = await findUserByEmail(email);
+      if (!existing || existing.status === 'SUSPENDED' || existing.status === 'DEACTIVATED') return false;
+
+      user.id = existing.id;
+      await updateLastLogin(existing.id);
+      return true;
+    },
     async jwt({ token, user }) {
       if (user) {
         const memberSession = await resolveMemberSession(user.id);

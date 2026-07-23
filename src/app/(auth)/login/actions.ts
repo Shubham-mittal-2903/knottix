@@ -43,3 +43,7 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
 
   redirect('/command');
 }
+
+export async function loginWithGoogle(): Promise<void> {
+  await signIn('google', { redirectTo: '/command' });
+}
